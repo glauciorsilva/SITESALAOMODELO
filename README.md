@@ -11,15 +11,14 @@ Site modelo para **salões de beleza, estética e barbearias**, com paleta em to
 - **Agendamento online.** Nome, celular e e-mail são obrigatórios, junto com serviço, data e horário
 - Horários livres calculados na hora a partir do **Google Agenda do salão**, sem horário duplicado (trava no servidor)
 - Cada agendamento vira um **evento no Google Agenda**. Folgas, almoço e feriados marcados na agenda somem do site
-- A confirmação aparece na tela, com o botão **"Adicionar à minha agenda"** para a cliente
+- **E-mail de confirmação** enviado pelo próprio Apps Script (grátis), com botões "Adicionar ao Google Agenda" e "Falar no WhatsApp" e anexo `.ics`
+- A confirmação também aparece na tela, com o botão **"Adicionar à minha agenda"**
 - **Banco de clientes** (Firestore): cadastro feito automaticamente, com contagem de agendamentos
 - **Painel administrativo** (`/admin`) com login por e-mail/senha ou Google, liberado só para e-mails autorizados
   - Indicadores: agendamentos de hoje, dos próximos 7 dias, total de clientes e cancelados
-  - Agendamentos: filtros, busca, concluir, marcar falta, cancelar (remove da agenda) e exportação em CSV
+  - Agendamentos: filtros, busca, concluir, marcar falta, cancelar (remove da agenda e pode avisar a cliente por e-mail) e exportação em CSV
   - Clientes: busca e exportação em CSV
   - Administradores: autorizar e remover e-mails
-
-> O envio de e-mail de confirmação foi retirado desta versão. Ele será feito por outro método.
 
 ---
 
@@ -31,7 +30,7 @@ Navegador ──► Firebase Hosting (public/)  ── plano gratuito
    ├─► Google Apps Script (App da Web, executa como o dono)
    │      GET  ?acao=config     dados do salão
    │      GET  ?acao=horarios   horários livres (lê o Google Agenda)
-   │      POST agendar          trava → cria evento na agenda → grava no Firestore (API REST)
+   │      POST agendar          trava → cria evento na agenda → grava no Firestore (API REST) → e-mail
    │      POST verificar        valida o login do painel (token do Firebase Auth)
    │      POST status           concluir / faltou / cancelar (cancelar apaga o evento)
    │
@@ -43,7 +42,7 @@ Navegador ──► Firebase Hosting (public/)  ── plano gratuito
 | Site e painel | HTML, CSS e JS puro no **Firebase Hosting** | grátis |
 | Banco de dados | **Firestore** | grátis (cota diária) |
 | Login | **Firebase Authentication** (e-mail/senha e Google) | grátis |
-| Back-end e agenda | **Google Apps Script** + **Google Agenda** | grátis |
+| Back-end, agenda e e-mail | **Google Apps Script** + **Google Agenda** + **MailApp** | grátis |
 
 ### Estrutura de pastas
 
@@ -110,8 +109,10 @@ Valores de `status`: `confirmado`, `concluido`, `cancelado` e `faltou`.
 | `ADMIN_EMAILS` | seu e-mail (e de quem mais acessar o painel), separados por vírgula |
 | `CALENDAR_ID` | ID da agenda do salão (vazio = agenda principal) |
 | `CONVIDAR_CLIENTE` | `sim` se quiser que a cliente receba o convite do Google Agenda (opcional) |
+| `EMAIL_COPIA_SALAO` | e-mail que recebe cópia oculta de cada confirmação (opcional) |
+| `ENVIAR_EMAIL` | `nao` para desligar os e-mails (opcional; padrão: envia) |
 
-5. No editor, selecione a função **`testarConfiguracao`** → **Executar** → autorize as permissões (Agenda, Firestore e conexões externas). O registro deve mostrar o nome da agenda e os horários livres.
+5. No editor, selecione a função **`testarConfiguracao`** → **Executar** → autorize as permissões (Agenda, Firestore, conexões externas e envio de e-mail). O registro deve mostrar o nome da agenda e os horários livres.
 6. **Implantar → Nova implantação → tipo "App da Web"**:
    - Executar como: **Eu**
    - Quem pode acessar: **Qualquer pessoa**
@@ -153,6 +154,12 @@ Para testar local antes de publicar: `firebase emulators:start --only hosting` �
 - O formulário tem um campo invisível anti-robô (honeypot) e pede **consentimento LGPD** obrigatório.
 - O painel não é indexado por buscadores (`noindex`).
 
+## Limites do plano gratuito (folgados para um salão)
+
+- **E-mails (MailApp)**: conta Gmail comum envia para cerca de **100 destinatários por dia**. Se a cota acabar, o agendamento continua valendo e o painel mostra "⚠ e-mail não enviado".
+- **Firestore Spark**: 50 mil leituras e 20 mil gravações por dia.
+- **Hosting Spark**: 10 GB de armazenamento e 360 MB de transferência por dia.
+
 ## Solução de problemas
 
 | Sintoma | Causa provável |
@@ -164,6 +171,7 @@ Para testar local antes de publicar: `firebase emulators:start --only hosting` �
 | Painel com "permission-denied" | o e-mail não está em `admins`, ou as regras não foram publicadas (`firebase deploy --only firestore`) |
 | "não tem permissão de administrador" | e-mail fora de `ADMIN_EMAILS` e da coleção `admins` |
 | Login com Google falha | `sitestetic.web.app` não está nos domínios autorizados do Authentication |
+| "⚠ e-mail não enviado" no painel | cota diária de e-mail esgotada, ou faltou autorizar o envio (rode `testarConfiguracao` de novo) |
 | Nenhum horário aparece | dia fechado em `funcionamento`, evento de dia inteiro na agenda, ou antecedência mínima ainda não atingida |
 
 Logs do back-end: no editor do Apps Script, menu **Execuções**.

@@ -218,7 +218,11 @@ async function enviar(e) {
       return;
     }
     const [a, m, d] = dados.data.split("-");
-    $("#sucessoTexto").innerHTML = `<strong>${json.resumo.servico}</strong><br>${d}/${m}/${a} às <strong>${dados.hora}</strong><br><br>Seu horário está garantido e o salão já recebeu seu agendamento.`;
+    $("#sucessoTexto").innerHTML = `<strong>${json.resumo.servico}</strong><br>${d}/${m}/${a} às <strong>${dados.hora}</strong><br><br>${
+      json.emailEnviado
+        ? `Enviamos a confirmação para <strong>${dados.email}</strong>. Confira também a caixa de spam.`
+        : "Seu horário está garantido e o salão já recebeu seu agendamento."
+    }`;
     const link = $("#linkAgenda");
     if (json.linkAgenda) { link.href = json.linkAgenda; link.hidden = false; } else link.hidden = true;
     $("#formAgendar").hidden = true;

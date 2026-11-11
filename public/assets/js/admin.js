@@ -188,7 +188,8 @@ function renderAgendamentos() {
         <td><strong>${esc(a.nome)}</strong>${a.observacoes ? `<small>${esc(a.observacoes)}</small>` : ""}</td>
         <td><a href="https://wa.me/55${esc(a.celular)}" target="_blank" rel="noopener">${esc(fone(a.celular))}</a><small>${esc(a.email)}</small></td>
         <td>${esc(a.servicoNome)}</td>
-        <td><span class="selo selo--${esc(a.status)}">${STATUS_LABEL[a.status] || esc(a.status)}</span></td>
+        <td><span class="selo selo--${esc(a.status)}">${STATUS_LABEL[a.status] || esc(a.status)}</span>
+          ${a.emailErro ? `<small title="${esc(a.emailErro)}">⚠ e-mail não enviado</small>` : ""}</td>
         <td><div class="acoes">
           ${a.status === "confirmado" ? `
             <button class="btn btn--claro btn--mini" data-acao="concluido" data-id="${a.id}">Concluir</button>
@@ -201,9 +202,13 @@ function renderAgendamentos() {
 }
 
 async function mudarStatus(id, status) {
-  if (status === "cancelado" && !confirm("Cancelar este agendamento? O horário será liberado e removido do Google Agenda.")) return;
+  let avisarCliente = false;
+  if (status === "cancelado") {
+    if (!confirm("Cancelar este agendamento? O horário será liberado e removido do Google Agenda.")) return;
+    avisarCliente = confirm("Enviar e-mail avisando a cliente sobre o cancelamento?");
+  }
   const token = await auth.currentUser.getIdToken();
-  const j = await apiPost("status", { idToken: token, id, status }).catch(() => ({ erro: "Erro de conexão." }));
+  const j = await apiPost("status", { idToken: token, id, status, avisarCliente }).catch(() => ({ erro: "Erro de conexão." }));
   if (j.erro || !j.ok) return toast(j.erro || "Erro ao atualizar.");
   toast("Status atualizado.");
   await Promise.all([carregarAgendamentos(), carregarIndicadores()]);

@@ -15,6 +15,8 @@
  *   CALENDAR_ID            ID da agenda do salão (vazio = agenda principal da conta)
  *   ADMIN_EMAILS           e-mails do painel, separados por vírgula
  *   CONVIDAR_CLIENTE       "sim" para a cliente receber convite do Google Agenda (opcional)
+ *   ENVIAR_EMAIL           "nao" desliga os e-mails (padrão: envia)
+ *   EMAIL_COPIA_SALAO      e-mail que recebe cópia oculta das confirmações (opcional)
  *
  *  Publicar: Implantar → Nova implantação → App da Web
  *            Executar como: EU   |   Quem pode acessar: QUALQUER PESSOA
@@ -216,6 +218,7 @@ function agendar_(b) {
   if (erros.length) throw falha_(erros.join(" "));
   if (slotsDoDia_(data, s.duracao).indexOf(hora) < 0) throw falha_("Horário fora do funcionamento do salão.");
 
+  var ag;
   // Trava: impede dois agendamentos simultâneos no mesmo horário
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) throw falha_("Muitos agendamentos ao mesmo tempo. Tente de novo em instantes.", 503);
@@ -240,29 +243,48 @@ function agendar_(b) {
     var evento = agenda_().createEvent(s.nome + " — " + nome, inicio, fim, opcoes);
     try { evento.setColor("6"); } catch (_) {}
 
+    ag = {
+      id: id, nome: nome, email: email, celular: celular,
+      servicoId: s.id, servicoNome: s.nome, duracao: s.duracao,
+      data: data, hora: hora, horaFim: horaFim,
+      inicioISO: data + "T" + hora + ":00" + SALAO.offset,
+      fimISO: data + "T" + horaFim + ":00" + SALAO.offset,
+      observacoes: observacoes, status: "confirmado", origem: "site",
+      calendarEventId: evento.getId(),
+    };
     try {
-      salvarAgendamento_({
-        id: id, nome: nome, email: email, celular: celular,
-        servicoId: s.id, servicoNome: s.nome, duracao: s.duracao,
-        data: data, hora: hora, horaFim: horaFim,
-        inicioISO: data + "T" + hora + ":00" + SALAO.offset,
-        fimISO: data + "T" + horaFim + ":00" + SALAO.offset,
-        observacoes: observacoes, status: "confirmado", origem: "site",
-        calendarEventId: evento.getId(),
-      });
+      salvarAgendamento_(ag);
     } catch (errBanco) {
       try { evento.deleteEvent(); } catch (_) {}
       throw errBanco;
     }
-
-    return {
-      ok: true, id: id,
-      resumo: { servico: s.nome, data: data, hora: hora, horaFim: horaFim, nome: nome },
-      linkAgenda: linkGoogleAgenda_(s.nome, inicio, fim),
-    };
   } finally {
     lock.releaseLock();
   }
+
+  // E-mail de confirmação (fora da trava; se falhar, o agendamento continua valendo)
+  var linkAgenda = linkGoogleAgenda_(ag.servicoNome, dataHora_(ag.data, ag.hora), dataHora_(ag.data, ag.horaFim));
+  var emailEnviado = false;
+  if (emailAtivo_()) {
+    try {
+      enviarConfirmacao_(ag, linkAgenda);
+      emailEnviado = true;
+    } catch (errEmail) {
+      console.error("E-mail não enviado: " + errEmail);
+      try {
+        fsCommit_([{
+          update: { name: fsNome_("agendamentos/" + ag.id), fields: fsCampos_({ emailErro: String(errEmail).slice(0, 300) }) },
+          updateMask: { fieldPaths: ["emailErro"] },
+        }]);
+      } catch (_) {}
+    }
+  }
+
+  return {
+    ok: true, id: ag.id, emailEnviado: emailEnviado,
+    resumo: { servico: ag.servicoNome, data: ag.data, hora: ag.hora, horaFim: ag.horaFim, nome: ag.nome },
+    linkAgenda: linkAgenda,
+  };
 }
 
 function linkGoogleAgenda_(servico, inicio, fim) {
@@ -356,7 +378,108 @@ function alterarStatus_(b) {
       if (ev) ev.deleteEvent();
     } catch (e) { console.warn("Evento não removido: " + e); }
   }
+  if (b.status === "cancelado" && doc.status !== "cancelado" && b.avisarCliente === true && emailAtivo_()) {
+    try { enviarCancelamento_(doc); } catch (e) { console.warn("E-mail de cancelamento não enviado: " + e); }
+  }
   return { ok: true };
+}
+
+// ============================ E-MAILS ================================
+// Enviados pela conta que executa o script (MailApp). Cota: ~100 destinatários/dia em conta Gmail comum.
+function emailAtivo_() {
+  return String(props_().ENVIAR_EMAIL || "sim").toLowerCase() !== "nao";
+}
+
+function esc_(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+function dataExtenso_(data) {
+  var dias = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  var p = data.split("-");
+  return dias[diaSemana_(data)] + ", " + p[2] + "/" + p[1] + "/" + p[0];
+}
+
+function layoutEmail_(titulo, corpo) {
+  return '<!doctype html><html><body style="margin:0;background:#f5ede4;font-family:Georgia,\'Times New Roman\',serif;color:#3b2a20">' +
+    '<table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0"><tr><td align="center">' +
+    '<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fffaf5;border-radius:14px;overflow:hidden;border:1px solid #e3d3c3">' +
+    '<tr><td style="background:#4a2c1d;padding:28px;text-align:center;color:#f5e6d3">' +
+    '<div style="font-size:26px;letter-spacing:1px">' + esc_(SALAO.nome) + '</div>' +
+    '<div style="font-size:13px;color:#d9b48f;letter-spacing:3px;text-transform:uppercase;margin-top:4px">' + esc_(SALAO.slogan) + '</div>' +
+    '</td></tr><tr><td style="padding:28px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6">' +
+    '<h2 style="font-family:Georgia,serif;color:#6b3f26;margin:0 0 12px">' + titulo + '</h2>' + corpo +
+    '</td></tr><tr><td style="background:#efe2d4;padding:18px 32px;font-family:Arial,sans-serif;font-size:12px;color:#6b5546;text-align:center">' +
+    esc_(SALAO.endereco) + '<br>WhatsApp ' + esc_(SALAO.contato.telefoneExibicao) + ' · ' + esc_(SALAO.contato.email) +
+    '</td></tr></table></td></tr></table></body></html>';
+}
+
+function icsAgendamento_(ag) {
+  var f = function (d) { return Utilities.formatDate(d, "UTC", "yyyyMMdd'T'HHmmss'Z'"); };
+  var ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SiteSalaoModelo//PT-BR", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    "UID:" + ag.id + "@sitesalaomodelo",
+    "DTSTAMP:" + f(new Date()),
+    "DTSTART:" + f(dataHora_(ag.data, ag.hora)),
+    "DTEND:" + f(dataHora_(ag.data, ag.horaFim)),
+    "SUMMARY:" + ag.servicoNome + " — " + SALAO.nome,
+    "LOCATION:" + SALAO.endereco.replace(/,/g, "\\,"),
+    "END:VEVENT", "END:VCALENDAR",
+  ].join("\r\n");
+  return Utilities.newBlob(ics, "text/calendar", "agendamento.ics");
+}
+
+function enviarConfirmacao_(ag, linkAgenda) {
+  var dataBR = ag.data.split("-").reverse().join("/");
+  var whats = "https://wa.me/" + SALAO.contato.whatsapp + "?text=" +
+    encodeURIComponent("Olá! Tenho um agendamento (" + ag.servicoNome + ") em " + dataBR + " às " + ag.hora + ".");
+  var linha = function (rot, val) {
+    return '<tr><td style="color:#8a6a55;width:110px">' + rot + "</td><td>" + val + "</td></tr>";
+  };
+  var corpo =
+    "<p>Olá, <strong>" + esc_(ag.nome) + "</strong>! Seu horário está confirmado. 💛</p>" +
+    '<table cellpadding="8" cellspacing="0" style="width:100%;background:#f7efe6;border-radius:10px;margin:16px 0">' +
+    linha("Serviço", "<strong>" + esc_(ag.servicoNome) + "</strong>") +
+    linha("Data", "<strong>" + esc_(dataExtenso_(ag.data)) + "</strong>") +
+    linha("Horário", "<strong>" + esc_(ag.hora) + "</strong> (duração aprox. " + ag.duracao + " min)") +
+    linha("Local", esc_(SALAO.endereco)) +
+    (ag.observacoes ? linha("Observações", esc_(ag.observacoes)) : "") +
+    "</table>" +
+    '<p style="text-align:center;margin:24px 0">' +
+    '<a href="' + linkAgenda + '" style="background:#8b5a3c;color:#fff;text-decoration:none;padding:12px 22px;border-radius:30px;display:inline-block;margin:4px">Adicionar ao Google Agenda</a> ' +
+    '<a href="' + whats + '" style="background:#4a2c1d;color:#fff;text-decoration:none;padding:12px 22px;border-radius:30px;display:inline-block;margin:4px">Falar no WhatsApp</a></p>' +
+    '<p style="font-size:13px;color:#6b5546">Precisa remarcar ou cancelar? Responda este e-mail ou fale com a gente pelo WhatsApp com pelo menos 2 horas de antecedência.</p>';
+
+  var opcoes = {
+    to: ag.email,
+    subject: "✅ Agendamento confirmado — " + ag.servicoNome + " em " + dataBR + " às " + ag.hora,
+    htmlBody: layoutEmail_("Agendamento confirmado", corpo),
+    name: SALAO.nome,
+    replyTo: SALAO.contato.email,
+    attachments: [icsAgendamento_(ag)],
+  };
+  var copia = props_().EMAIL_COPIA_SALAO;
+  if (copia) opcoes.bcc = copia;
+  MailApp.sendEmail(opcoes);
+}
+
+function enviarCancelamento_(ag) {
+  var corpo =
+    "<p>Olá, <strong>" + esc_(ag.nome) + "</strong>.</p>" +
+    "<p>Seu agendamento de <strong>" + esc_(ag.servicoNome) + "</strong> em <strong>" + esc_(dataExtenso_(ag.data)) +
+    "</strong> às <strong>" + esc_(ag.hora) + "</strong> foi <strong>cancelado</strong>.</p>" +
+    '<p>Quer escolher outro horário? É só acessar nosso site ou chamar no WhatsApp: <a href="https://wa.me/' + SALAO.contato.whatsapp + '">' +
+    esc_(SALAO.contato.telefoneExibicao) + "</a>.</p>";
+  MailApp.sendEmail({
+    to: ag.email,
+    subject: "Agendamento cancelado — " + SALAO.nome,
+    htmlBody: layoutEmail_("Agendamento cancelado", corpo),
+    name: SALAO.nome,
+    replyTo: SALAO.contato.email,
+  });
 }
 
 // ===================== FIRESTORE (API REST) ==========================
@@ -420,6 +543,7 @@ function testarConfiguracao() {
   console.log("Agenda: " + agenda_().getName());
   fsGet_("admins/__teste__"); // lança erro se não tiver acesso ao Firestore
   console.log("Firestore acessível: sim");
+  console.log("E-mails restantes hoje: " + MailApp.getRemainingDailyQuota());
   var prox = new Date(Date.now() + 2 * 864e5);
   var data = Utilities.formatDate(prox, SALAO.fuso, "yyyy-MM-dd");
   console.log("Horários livres em " + data + " (corte): " + JSON.stringify(horarios_(data, "corte")));
