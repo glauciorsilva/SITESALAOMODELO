@@ -8,6 +8,7 @@ import {
   getFirestore, collection, query, where, orderBy, getDocs, doc, setDoc, deleteDoc, getCountFromServer,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { apiGet, apiPost } from "./api.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -84,10 +85,10 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   const token = await user.getIdToken();
-  const r = await fetch("/api/admin/verificar", { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
-  if (!r || !r.ok) {
+  const v = await apiPost("verificar", { idToken: token }).catch(() => null);
+  if (!v || !v.admin) {
     await signOut(auth);
-    $("#loginErro").textContent = `O e-mail ${user.email} não tem permissão de administrador.`;
+    $("#loginErro").textContent = v?.erro || `Não foi possível validar o acesso de ${user.email}.`;
     return;
   }
   $("#usuarioEmail").textContent = user.email;
@@ -117,7 +118,7 @@ async function iniciarPainel() {
     ]));
     $("#formAdmin").addEventListener("submit", adicionarAdmin);
     try {
-      const cfg = await fetch("/api/config").then((r) => r.json());
+      const cfg = await apiGet("config");
       $("#painelNome").textContent = cfg.nome;
     } catch {}
   }
@@ -187,9 +188,7 @@ function renderAgendamentos() {
         <td><strong>${esc(a.nome)}</strong>${a.observacoes ? `<small>${esc(a.observacoes)}</small>` : ""}</td>
         <td><a href="https://wa.me/55${esc(a.celular)}" target="_blank" rel="noopener">${esc(fone(a.celular))}</a><small>${esc(a.email)}</small></td>
         <td>${esc(a.servicoNome)}</td>
-        <td><span class="selo selo--${esc(a.status)}">${STATUS_LABEL[a.status] || esc(a.status)}</span>
-          ${a.emailErro ? `<small title="${esc(a.emailErro)}">⚠ e-mail não enviado</small>` : ""}
-          ${a.calendarErro ? `<small title="${esc(a.calendarErro)}">⚠ fora do Calendar</small>` : ""}</td>
+        <td><span class="selo selo--${esc(a.status)}">${STATUS_LABEL[a.status] || esc(a.status)}</span></td>
         <td><div class="acoes">
           ${a.status === "confirmado" ? `
             <button class="btn btn--claro btn--mini" data-acao="concluido" data-id="${a.id}">Concluir</button>
@@ -202,19 +201,10 @@ function renderAgendamentos() {
 }
 
 async function mudarStatus(id, status) {
-  let avisarCliente = false;
-  if (status === "cancelado") {
-    if (!confirm("Cancelar este agendamento? O horário será liberado e removido do Google Calendar.")) return;
-    avisarCliente = confirm("Enviar e-mail avisando a cliente sobre o cancelamento?");
-  }
+  if (status === "cancelado" && !confirm("Cancelar este agendamento? O horário será liberado e removido do Google Agenda.")) return;
   const token = await auth.currentUser.getIdToken();
-  const r = await fetch("/api/admin/status", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ id, status, avisarCliente }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) return toast(j.erro || "Erro ao atualizar.");
+  const j = await apiPost("status", { idToken: token, id, status }).catch(() => ({ erro: "Erro de conexão." }));
+  if (j.erro || !j.ok) return toast(j.erro || "Erro ao atualizar.");
   toast("Status atualizado.");
   await Promise.all([carregarAgendamentos(), carregarIndicadores()]);
 }

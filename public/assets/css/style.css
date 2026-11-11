@@ -23,6 +23,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: 80px; }
 body { margin: 0; font-family: var(--fonte-texto); color: var(--texto); background: var(--marfim); line-height: 1.6; }
 img { max-width: 100%; display: block; }
@@ -177,3 +178,4 @@ h3 { font-size: 1.6rem; }
   .form__linha { grid-template-columns: 1fr; gap: 0; }
   .form { padding: 1.4rem; }
 }
+.sucesso .btn--dourado { margin-top: .5rem; }

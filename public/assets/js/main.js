@@ -1,4 +1,6 @@
 // Front-end do site: carrega configuração, monta serviços e controla o agendamento.
+import { apiGet, apiPost } from "./api.js";
+
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -11,9 +13,9 @@ async function init() {
   $("#ano").textContent = new Date().getFullYear();
   menuMobile();
   try {
-    SALAO = await fetch("/api/config").then((r) => r.json());
+    SALAO = await apiGet("config");
   } catch {
-    console.error("Não foi possível carregar /api/config");
+    console.error("Não foi possível carregar a configuração do salão (confira API_URL em api.js)");
     return;
   }
   preencherDados();
@@ -152,10 +154,9 @@ async function carregarHorarios() {
   dica.textContent = "Carregando horários…";
   const meu = ++reqId;
   try {
-    const r = await fetch(`/api/horarios?data=${data}&servico=${servico}`);
-    const json = await r.json();
+    const json = await apiGet("horarios", { data, servico });
     if (meu !== reqId) return;
-    if (!r.ok) return (dica.textContent = json.erro || "Erro ao carregar horários.");
+    if (json.erro) return (dica.textContent = json.erro || "Erro ao carregar horários.");
     if (json.fechado) return (dica.textContent = "Fechado nesta data.");
     if (!json.horarios.length) return (dica.textContent = "Sem horários livres nesta data. Tente outro dia.");
     dica.textContent = `${json.horarios.length} horários disponíveis`;
@@ -210,23 +211,16 @@ async function enviar(e) {
   btn.disabled = true;
   btn.textContent = "Confirmando…";
   try {
-    const r = await fetch("/api/agendar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dados),
-    });
-    const json = await r.json();
-    if (!r.ok) {
+    const json = await apiPost("agendar", dados);
+    if (json.erro || !json.ok) {
       erro.textContent = json.erro || "Não foi possível agendar.";
-      if (r.status === 409) carregarHorarios();
+      if (json.codigo === 409) carregarHorarios();
       return;
     }
     const [a, m, d] = dados.data.split("-");
-    $("#sucessoTexto").innerHTML = `<strong>${json.resumo.servico}</strong><br>${d}/${m}/${a} às <strong>${dados.hora}</strong><br><br>${
-      json.emailEnviado
-        ? `Enviamos a confirmação para <strong>${dados.email}</strong>. Confira também a caixa de spam.`
-        : "Seu horário está garantido! Não conseguimos enviar o e-mail agora, mas o salão já recebeu seu agendamento."
-    }`;
+    $("#sucessoTexto").innerHTML = `<strong>${json.resumo.servico}</strong><br>${d}/${m}/${a} às <strong>${dados.hora}</strong><br><br>Seu horário está garantido e o salão já recebeu seu agendamento.`;
+    const link = $("#linkAgenda");
+    if (json.linkAgenda) { link.href = json.linkAgenda; link.hidden = false; } else link.hidden = true;
     $("#formAgendar").hidden = true;
     $("#sucesso").hidden = false;
     $("#agendar").scrollIntoView({ behavior: "smooth" });
