@@ -1,6 +1,6 @@
 // Comunicação com o back-end (Google Apps Script publicado como App da Web).
 // Cole aqui a URL da implantação: Implantar → Gerenciar implantações → URL do app da Web (termina em /exec)
-export const API_URL = "https://script.google.com/macros/s/AKfycbwq3Zl04n7JUR_U_mJQOLW3VvW7Nhg2QmhXdceM5ovFEmRdHncuhTn2umtSS-XelINk/exec";
+export const API_URL = "https://script.google.com/macros/s/AKfycbxrBxknN1a4vqKg4ciZEYEXj-K7_BFWk2_Ywm57OfVIugUJI_4VNM9dEPT6ynqsXkqe/exec";
 
 // GET ?acao=...
 export async function apiGet(acao, params = {}) {
