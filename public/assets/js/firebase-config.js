@@ -6,6 +6,6 @@ export const firebaseConfig = {
   projectId: "siteestetic",
   storageBucket: "siteestetic.firebasestorage.app",
   messagingSenderId: "413672821818",
-  appId: "1:413672821818:web:fe1b854a7563b09e1c1103",
-  measurementId: "G-DYWBQEK5S5",
+  appId: "1:413672821818:web:f6cc7591b314ba251c1103",
+  measurementId: "G-S7ST02YFQP",
 };

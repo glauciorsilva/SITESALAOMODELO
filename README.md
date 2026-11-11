@@ -95,7 +95,7 @@ Valores de `status`: `confirmado`, `concluido`, `cancelado` e `faltou`.
 2. **Authentication** → Começar → ative **E-mail/senha** e **Google**.
    - Em **Configurações → Ações do usuário**, **desmarque "Ativar criação de conta"**. Assim ninguém se cadastra sozinho.
    - Para login com senha, crie o usuário em **Authentication → Usuários → Adicionar usuário**.
-   - Os domínios `siteestetic.web.app` e `siteestetic.firebaseapp.com` já vêm autorizados. Se usar domínio próprio, adicione-o em **Domínios autorizados**.
+   - Em **Configurações → Domínios autorizados**, adicione **`sitestetic.web.app`** e **`sitestetic.firebaseapp.com`** (site de hosting extra: o Firebase só autoriza sozinho os domínios padrão `siteestetic.*`). Se usar domínio próprio, adicione-o também.
 3. A configuração Web já está em [`public/assets/js/firebase-config.js`](public/assets/js/firebase-config.js).
 
 ### 2. Google Calendar
@@ -131,7 +131,7 @@ firebase functions:secrets:set SMTP_PASS
 firebase deploy
 ```
 
-O site fica em **https://siteestetic.web.app**. O painel fica em **https://siteestetic.web.app/admin**: entre com um e-mail de `ADMIN_EMAILS`. No primeiro login ele é registrado na coleção `admins`, e você passa a autorizar outros e-mails pela aba **Administradores**.
+O site fica em **https://sitestetic.web.app**. O painel fica em **https://sitestetic.web.app/admin**: entre com um e-mail de `ADMIN_EMAILS`. No primeiro login ele é registrado na coleção `admins`, e você passa a autorizar outros e-mails pela aba **Administradores**.
 
 Para publicar só uma parte:
 

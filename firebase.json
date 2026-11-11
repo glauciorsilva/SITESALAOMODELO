@@ -1,30 +1,57 @@
 {
   "hosting": {
+    "site": "sitestetic",
     "public": "public",
     "cleanUrls": true,
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
       {
         "source": "/api/**",
-        "function": { "functionId": "api", "region": "southamerica-east1" }
+        "function": {
+          "functionId": "api",
+          "region": "southamerica-east1"
+        }
       }
     ],
     "headers": [
       {
         "source": "**",
         "headers": [
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          }
         ]
       },
       {
         "source": "/admin**",
-        "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          }
+        ]
       },
       {
         "source": "**/*.@(css|js)",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
       }
     ]
   },
@@ -33,7 +60,11 @@
       "source": "functions",
       "codebase": "default",
       "runtime": "nodejs20",
-      "ignore": ["node_modules", ".git", "*.local"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.local"
+      ]
     }
   ],
   "firestore": {
@@ -41,10 +72,20 @@
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
-    "functions": { "port": 5001 },
-    "firestore": { "port": 8080 },
-    "auth": { "port": 9099 },
-    "hosting": { "port": 5000 },
-    "ui": { "enabled": true }
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
+    }
   }
 }
