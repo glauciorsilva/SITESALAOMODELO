@@ -1,6 +1,7 @@
 # SITESALAOMODELO
 
 Site modelo para **salões de beleza, estética e barbearias**, com paleta em tons de marrom. É feito para ser duplicado e personalizado para cada cliente.
+Roda 100% no **Firebase**: Hosting, Cloud Functions, Firestore e Authentication.
 
 **O que o site tem:**
 
@@ -22,52 +23,54 @@ Site modelo para **salões de beleza, estética e barbearias**, com paleta em to
 ## Arquitetura
 
 ```
-Navegador ──► Vercel (site estático: index.html, admin.html, assets/)
+Navegador ──► Firebase Hosting (public/: index.html, admin.html, assets/)
    │
-   ├─► /api/config        dados públicos do salão (lib/config.js)
-   ├─► /api/horarios      horários livres (Firestore + Google Calendar freebusy)
-   ├─► /api/agendar       valida → grava cliente + agendamento (transação)
-   │                       → cria evento no Google Calendar → envia e-mail
-   ├─► /api/admin/verificar   confirma se o login é de administrador
-   └─► /api/admin/status      altera status (exige token de admin)
+   └─► /api/**  ──(rewrite)──► Cloud Function "api" (southamerica-east1)
+          ├─ /api/config            dados públicos do salão
+          ├─ /api/horarios          horários livres (Firestore + Calendar freebusy)
+          ├─ /api/agendar           valida → grava cliente + agendamento (transação)
+          │                          → cria evento no Google Calendar → envia e-mail
+          ├─ /api/admin/verificar   confirma se o login é de administrador
+          └─ /api/admin/status      altera status (exige token de admin)
 
 Painel /admin ──► Firebase Auth (login) + Firestore (somente leitura, protegido por regras)
 ```
 
 | Camada | Tecnologia |
 |---|---|
-| Front-end | HTML, CSS e JavaScript puro (sem build) |
-| Back-end | Vercel Serverless Functions (Node 18+) |
-| Banco de dados | Firebase Firestore |
+| Front-end | HTML, CSS e JavaScript puro (sem build), no Firebase Hosting |
+| Back-end | Cloud Functions 2ª geração (Node 20), região São Paulo |
+| Banco de dados | Firestore |
 | Autenticação | Firebase Authentication (e-mail/senha e Google) |
-| Agenda | Google Calendar API (conta de serviço) |
-| E-mail | SMTP via Nodemailer (Gmail com senha de app) |
+| Agenda | Google Calendar API (conta de serviço padrão das Functions, sem chave JSON) |
+| E-mail | SMTP via Nodemailer (Gmail com senha de app guardada no Secret Manager) |
 
 ### Estrutura de pastas
 
 ```
-├── index.html               site público
-├── admin.html               painel administrativo
-├── assets/
-│   ├── css/style.css        paleta e estilos (variáveis no topo)
-│   ├── css/admin.css        estilos do painel
-│   ├── js/main.js           serviços, horários e formulário
-│   ├── js/admin.js          login e painel
-│   └── js/firebase-config.js  configuração WEB do Firebase (pública)
-├── api/
-│   ├── config.js
-│   ├── horarios.js
-│   ├── agendar.js
-│   └── admin/{verificar,status}.js
-├── lib/
-│   ├── config.js            ★ dados do salão: nome, contatos, serviços, horários
-│   ├── agenda.js            regras de horários e conflitos
-│   ├── calendar.js          Google Calendar
-│   ├── email.js             e-mails de confirmação e cancelamento
-│   └── firebase.js          Firebase Admin e verificação de admin
-├── firestore.rules          regras de segurança do Firestore
-├── .env.example             variáveis de ambiente
-└── vercel.json
+├── firebase.json            Hosting + rewrites /api + Functions + Firestore
+├── .firebaserc              projeto padrão (siteestetic)
+├── firestore.rules          regras de segurança
+├── firestore.indexes.json
+├── public/                  ← site (Firebase Hosting)
+│   ├── index.html
+│   ├── admin.html
+│   └── assets/
+│       ├── css/style.css    paleta e estilos (variáveis no topo)
+│       ├── css/admin.css
+│       ├── js/main.js       serviços, horários e formulário
+│       ├── js/admin.js      login e painel
+│       └── js/firebase-config.js  configuração WEB do Firebase
+└── functions/               ← back-end (Cloud Functions)
+    ├── index.js             função "api" e roteador
+    ├── .env.example         variáveis (copiar para .env)
+    ├── api/                 config, horarios, agendar, admin/{verificar,status}
+    └── lib/
+        ├── config.js        ★ dados do salão: nome, contatos, serviços, horários
+        ├── agenda.js        regras de horários e conflitos
+        ├── calendar.js      Google Calendar
+        ├── email.js         e-mails de confirmação e cancelamento
+        └── firebase.js      Firebase Admin e verificação de admin
 ```
 
 ### Banco de dados (Firestore)
@@ -82,93 +85,101 @@ Valores de `status`: `confirmado`, `concluido`, `cancelado` e `faltou`.
 
 ---
 
-## Passo a passo de configuração
+## Passo a passo de configuração (projeto `siteestetic`)
 
-### 1. Firebase
+> ⚠️ **As Cloud Functions exigem o plano Blaze** (pago conforme o uso). Ele tem cota gratuita mensal grande, suficiente para um salão. Também é o Blaze que libera as chamadas externas (Gmail e Google Calendar). No Console: ⚙️ → Uso e faturamento → Detalhes e configurações → **Modificar plano**. Vale configurar um **alerta de orçamento** (ex.: R$ 10).
 
-1. Crie um projeto em <https://console.firebase.google.com>.
-2. **Firestore Database** → Criar banco (modo produção, região `southamerica-east1`).
-3. **Regras**: cole o conteúdo de [`firestore.rules`](firestore.rules) e clique em **Publicar**.
-4. **Authentication** → Começar → ative **E-mail/senha** e **Google**.
+### 1. Firebase Console
+
+1. **Firestore Database** → Criar banco (modo produção, região `southamerica-east1`).
+2. **Authentication** → Começar → ative **E-mail/senha** e **Google**.
    - Em **Configurações → Ações do usuário**, **desmarque "Ativar criação de conta"**. Assim ninguém se cadastra sozinho.
-   - Em **Configurações → Domínios autorizados**, adicione o domínio da Vercel (ex.: `sitesalaomodelo.vercel.app`) e o domínio próprio.
    - Para login com senha, crie o usuário em **Authentication → Usuários → Adicionar usuário**.
-5. **Configurações do projeto → Seus apps → Web (</>)**: registre o app, copie o objeto `firebaseConfig` e cole em [`assets/js/firebase-config.js`](assets/js/firebase-config.js).
-6. **Configurações do projeto → Contas de serviço → Gerar nova chave privada**. O JSON baixado é o valor de `GOOGLE_SERVICE_ACCOUNT_JSON`. **Nunca suba esse arquivo para o GitHub.**
+   - Os domínios `siteestetic.web.app` e `siteestetic.firebaseapp.com` já vêm autorizados. Se usar domínio próprio, adicione-o em **Domínios autorizados**.
+3. A configuração Web já está em [`public/assets/js/firebase-config.js`](public/assets/js/firebase-config.js).
 
 ### 2. Google Calendar
 
-1. No [Google Cloud Console](https://console.cloud.google.com), no **mesmo projeto do Firebase**, ative a **Google Calendar API**.
-2. No Google Agenda da conta do salão, abra **Configurações da agenda → Compartilhar com pessoas específicas**. Adicione o `client_email` da conta de serviço (está no JSON) com a permissão **"Fazer alterações nos eventos"**.
-3. Em **Integrar agenda**, copie o **ID da agenda** e use em `GOOGLE_CALENDAR_ID`. Para a agenda principal, o ID é o próprio e-mail.
+1. Ative a **Google Calendar API** no projeto:
+   <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=siteestetic> → **Ativar**.
+2. Descubra o e-mail da conta de serviço das Functions. Ele tem o formato `NUMERO-DO-PROJETO-compute@developer.gserviceaccount.com`; para este projeto é **`413672821818-compute@developer.gserviceaccount.com`**. Para conferir: Google Cloud → IAM e administrador → Contas de serviço.
+3. No Google Agenda do salão, abra **Configurações da agenda → Compartilhar com pessoas específicas**. Adicione esse e-mail com a permissão **"Fazer alterações nos eventos"**.
+4. Em **Integrar agenda**, copie o **ID da agenda** e coloque em `GOOGLE_CALENDAR_ID`. Para a agenda principal, o ID é o próprio e-mail.
 
 > Eventos criados manualmente na agenda (folga, almoço, compromisso) **bloqueiam** os horários no site automaticamente.
 
 ### 3. E-mail de confirmação (Gmail)
 
 1. A conta Google precisa ter a verificação em duas etapas ativa.
-2. Acesse <https://myaccount.google.com/apppasswords> e gere uma **senha de app**.
-3. Use essa senha em `SMTP_PASS` e o e-mail em `SMTP_USER` e `SMTP_FROM`.
+2. Gere uma **senha de app** em <https://myaccount.google.com/apppasswords>.
+3. Ela vai para o Secret Manager no passo 4. Ela **não** fica no `.env`.
 
-> Também funciona com outro SMTP (Hostinger, Zoho, Brevo etc.): basta trocar `SMTP_HOST` e `SMTP_PORT`.
-
-### 4. Deploy na Vercel
-
-1. Em <https://vercel.com/new>, importe o repositório `glauciorsilva/SITESALAOMODELO`.
-2. Framework preset: **Other**. Não é preciso comando de build.
-3. Em **Settings → Environment Variables**, cadastre as variáveis do [`.env.example`](.env.example):
-
-| Variável | Obrigatória | Descrição |
-|---|---|---|
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | ✅ | JSON da conta de serviço (puro ou em base64) |
-| `ADMIN_EMAILS` | ✅ | e-mails do primeiro acesso ao painel, separados por vírgula |
-| `SMTP_HOST` / `SMTP_PORT` | ✅ | servidor SMTP (padrão Gmail: `smtp.gmail.com` / `465`) |
-| `SMTP_USER` / `SMTP_PASS` | ✅ | login e senha de app |
-| `SMTP_FROM` | ➖ | remetente (padrão: `SMTP_USER`) |
-| `GOOGLE_CALENDAR_ID` | ➖ | vazio = integração com a agenda desligada |
-| `EMAIL_COPIA_SALAO` | ➖ | recebe cópia oculta de cada confirmação |
-
-4. Faça o deploy. Depois, entre em `/admin` com um e-mail listado em `ADMIN_EMAILS`. No primeiro login ele é registrado na coleção `admins`, e você passa a autorizar outros e-mails pela aba **Administradores**.
-
-### Rodar localmente
+### 4. Deploy pelo terminal (VS Code)
 
 ```bash
-npm install
-npm i -g vercel
-cp .env.example .env.local   # preencha os valores
-vercel dev                   # http://localhost:3000
+npm install -g firebase-tools
+firebase login
+cd functions && npm install && cd ..
+
+# variáveis (não secretas)
+cp functions/.env.example functions/.env       # edite ADMIN_EMAILS, GOOGLE_CALENDAR_ID, SMTP_USER...
+
+# segredo: senha de app do Gmail
+firebase functions:secrets:set SMTP_PASS
+
+# publica tudo: site + função + regras do Firestore
+firebase deploy
+```
+
+O site fica em **https://siteestetic.web.app**. O painel fica em **https://siteestetic.web.app/admin**: entre com um e-mail de `ADMIN_EMAILS`. No primeiro login ele é registrado na coleção `admins`, e você passa a autorizar outros e-mails pela aba **Administradores**.
+
+Para publicar só uma parte:
+
+```bash
+firebase deploy --only hosting      # só o site (HTML/CSS/JS)
+firebase deploy --only functions    # só o back-end
+firebase deploy --only firestore    # só as regras
+```
+
+### Testar localmente
+
+```bash
+firebase emulators:start
+# site em http://localhost:5000 · painel dos emuladores em http://localhost:4000
 ```
 
 ---
 
 ## Personalizar para um novo salão
 
-1. **Dados do salão**: edite [`lib/config.js`](lib/config.js) (nome, slogan, endereço, WhatsApp, e-mail, redes sociais, serviços com duração e preço, horário de funcionamento, intervalo entre horários e antecedência mínima).
-2. **Cores**: altere as variáveis no topo de [`assets/css/style.css`](assets/css/style.css) (`--espresso`, `--cafe`, `--chocolate`, `--canela`, `--caramelo`, `--dourado`...).
-3. **Textos fixos** (hero, "Sobre", diferenciais): edite direto no [`index.html`](index.html).
-4. **Fotos da galeria**: coloque as imagens em `assets/img/` e troque os gradientes `.g1`…`.g6` no CSS por `background-image: url(/assets/img/arquivo.jpg)`.
-5. **Barbearia**: troque os serviços em `lib/config.js` (corte masculino, barba, pigmentação...) e os textos do hero.
+1. Crie um projeto Firebase novo para o cliente e troque o ID em `.firebaserc` e o `firebaseConfig` em `public/assets/js/firebase-config.js`.
+2. **Dados do salão**: edite [`functions/lib/config.js`](functions/lib/config.js) (nome, slogan, endereço, WhatsApp, e-mail, redes sociais, serviços com duração e preço, horário de funcionamento, intervalo entre horários e antecedência mínima).
+3. **Cores**: altere as variáveis no topo de [`public/assets/css/style.css`](public/assets/css/style.css).
+4. **Textos fixos** (hero, "Sobre", diferenciais): edite direto no [`public/index.html`](public/index.html).
+5. **Fotos da galeria**: coloque as imagens em `public/assets/img/` e troque os gradientes `.g1`…`.g6` no CSS por `background-image: url(/assets/img/arquivo.jpg)`.
+6. **Barbearia**: troque os serviços (corte masculino, barba, pigmentação...) e os textos do hero.
 
 ---
 
 ## Segurança e LGPD
 
-- O navegador **não grava** no banco. Toda gravação passa pela API, que valida os dados.
+- O navegador **não grava** no banco. Toda gravação passa pela Cloud Function, que valida os dados.
 - Regras do Firestore: clientes e agendamentos são **somente leitura**, e só para administradores.
 - As rotas `/api/admin/*` verificam o token do Firebase e se o e-mail está autorizado.
+- A senha do e-mail fica no **Secret Manager**. Não há chave de conta de serviço no código.
 - O formulário tem um campo invisível anti-robô (honeypot) e pede **consentimento LGPD** obrigatório.
 - O painel não é indexado por buscadores (`noindex`).
-- Segredos ficam só nas variáveis de ambiente da Vercel (o `.gitignore` já bloqueia `.env` e chaves JSON).
 
 ## Solução de problemas
 
 | Sintoma | Causa provável |
 |---|---|
-| Painel mostra "Erro ao carregar (permission-denied)" | o e-mail não está em `admins`, ou as regras não foram publicadas |
+| `firebase deploy` reclama do plano | o projeto precisa estar no **Blaze** para usar Functions |
+| Painel mostra "permission-denied" | o e-mail não está em `admins`, ou as regras não foram publicadas (`firebase deploy --only firestore`) |
 | "não tem permissão de administrador" | e-mail fora de `ADMIN_EMAILS` e da coleção `admins` |
 | Login com Google falha | o domínio não está em Authentication → Domínios autorizados |
-| Agendamento com "⚠ fora do Calendar" | agenda não compartilhada com a conta de serviço, ou Calendar API desativada |
-| Agendamento com "⚠ e-mail não enviado" | senha de app errada ou SMTP bloqueado. Veja os logs na Vercel |
+| Agendamento com "⚠ fora do Calendar" | Calendar API desativada, ou agenda não compartilhada com `...-compute@developer.gserviceaccount.com` |
+| Agendamento com "⚠ e-mail não enviado" | senha de app errada ou segredo `SMTP_PASS` não definido. Veja `firebase functions:log` |
 | Nenhum horário aparece | dia fechado em `funcionamento`, ou antecedência mínima ainda não atingida |
 
 ---

@@ -1,20 +1,15 @@
-// Integração com Google Calendar via conta de serviço.
-// A agenda do salão precisa ser compartilhada com o e-mail da conta de serviço
+// Integração com Google Calendar usando a conta de serviço padrão das Cloud Functions
+// (PROJECT_NUMBER-compute@developer.gserviceaccount.com).
+// A agenda do salão precisa ser compartilhada com esse e-mail
 // com a permissão "Fazer alterações nos eventos".
 import { google } from "googleapis";
-import { getServiceAccount } from "./firebase.js";
 import { SALAO } from "./config.js";
 
 let _cal = null;
 function cal() {
   if (_cal) return _cal;
-  const sa = getServiceAccount();
-  const jwt = new google.auth.JWT({
-    email: sa.client_email,
-    key: sa.private_key,
-    scopes: ["https://www.googleapis.com/auth/calendar"],
-  });
-  _cal = google.calendar({ version: "v3", auth: jwt });
+  const auth = new google.auth.GoogleAuth({ scopes: ["https://www.googleapis.com/auth/calendar"] });
+  _cal = google.calendar({ version: "v3", auth });
   return _cal;
 }
 

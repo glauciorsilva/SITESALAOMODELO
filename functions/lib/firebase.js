@@ -1,21 +1,8 @@
-// Inicialização do Firebase Admin (lado servidor / Vercel Functions)
+// Inicialização do Firebase Admin (lado servidor / Cloud Functions)
+// Nas Cloud Functions as credenciais vêm automaticamente da conta de serviço do projeto.
 import admin from "firebase-admin";
 
-function lerServiceAccount() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error("Variável GOOGLE_SERVICE_ACCOUNT_JSON não configurada.");
-  // Aceita JSON puro ou JSON codificado em base64
-  const texto = raw.trim().startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
-  return JSON.parse(texto);
-}
-
-export function getServiceAccount() {
-  return lerServiceAccount();
-}
-
-if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(lerServiceAccount()) });
-}
+if (!admin.apps.length) admin.initializeApp();
 
 export const db = admin.firestore();
 export const auth = admin.auth();
