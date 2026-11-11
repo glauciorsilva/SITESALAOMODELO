@@ -62,6 +62,17 @@ function preencherDados() {
   });
 }
 
+const exemplosMaya = new Map([
+  ["corte", "assets/img/maya/corte.webp"],
+  ["escova", "assets/img/maya/escova.webp"],
+  ["coloracao", "assets/img/maya/coloracao.webp"],
+  ["mechas", "assets/img/maya/mechas.webp"],
+  ["hidratacao", "assets/img/maya/hidratacao.webp"],
+  ["manicure", "assets/img/maya/manicure.webp"],
+  ["sobrancelha", "assets/img/maya/sobrancelha.webp"],
+  ["maquiagem", "assets/img/maya/maquiagem.webp"],
+]);
+
 function montarServicos() {
   const lista = $("#listaServicos");
   const select = $("#servico");
@@ -69,6 +80,7 @@ function montarServicos() {
     .map(
       (s) => `
       <article class="servico">
+        ${exemplosMaya.has(s.id) ? `<img class="servico__foto" src="${exemplosMaya.get(s.id)}" alt="" width="384" height="511" loading="lazy" decoding="async" />` : ""}
         <h3>${s.nome}</h3>
         <p class="servico__meta">Duração aprox. ${formatarDuracao(s.duracao)}</p>
         <p class="servico__preco">${s.preco}</p>

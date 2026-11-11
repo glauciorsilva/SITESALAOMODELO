@@ -73,7 +73,6 @@ h3 { font-size: 1.6rem; }
 .hero__inner { position: relative; z-index: 2; max-width: 680px; }
 .hero__texto { font-size: 1.1rem; color: #e9d8c6; max-width: 560px; }
 .hero__acoes { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
-.hero__ornamento { position: absolute; right: -120px; top: 50%; transform: translateY(-50%); width: 520px; height: 520px; border-radius: 50%; border: 1px solid rgba(217,180,143,.35); box-shadow: 0 0 0 40px rgba(217,180,143,.06), 0 0 0 90px rgba(217,180,143,.04); }
 
 /* ---------- Seções ---------- */
 .secao { padding: 6rem 0; }
@@ -104,13 +103,6 @@ h3 { font-size: 1.6rem; }
 .galeria { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 220px; gap: 1rem; margin-top: 2rem; }
 .galeria figure { margin: 0; border-radius: var(--raio); position: relative; overflow: hidden; background-size: cover; background-position: center; }
 .galeria figcaption { position: absolute; inset: auto 0 0 0; padding: 1rem; color: var(--marfim); font-family: var(--fonte-titulo); font-size: 1.3rem; background: linear-gradient(transparent, rgba(43,24,16,.75)); }
-/* Troque os gradientes por fotos: background-image: url(/assets/img/galeria-1.jpg) */
-.g1 { background: linear-gradient(135deg, #8b5a3c, #4a2c1d); grid-row: span 2; }
-.g2 { background: linear-gradient(135deg, #d9b48f, #8b5a3c); }
-.g3 { background: linear-gradient(135deg, #b07d56, #6b3f26); }
-.g4 { background: linear-gradient(135deg, #6b3f26, #2b1810); grid-column: span 2; }
-.g5 { background: linear-gradient(135deg, #efe2d4, #b07d56); grid-column: span 2; }
-.g6 { background: linear-gradient(135deg, #4a2c1d, #8b5a3c); }
 
 /* ---------- Agendamento ---------- */
 .agendar { display: grid; grid-template-columns: 1fr 1.25fr; gap: 3.5rem; align-items: start; }
@@ -173,9 +165,18 @@ h3 { font-size: 1.6rem; }
   .nav { position: fixed; inset: 72px 0 auto 0; flex-direction: column; background: var(--espresso); padding: 1.5rem; gap: 1.2rem; transform: translateY(-120%); visibility: hidden; transition: transform .3s, visibility .3s; }
   .nav.aberto { transform: translateY(0); visibility: visible; }
   .hero { padding: 5rem 0 6rem; }
-  .hero__ornamento { display: none; }
   .secao { padding: 4.5rem 0; }
   .form__linha { grid-template-columns: 1fr; gap: 0; }
   .form { padding: 1.4rem; }
 }
 .sucesso .btn--dourado { margin-top: .5rem; }
+
+
+.hero__layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: center; gap: clamp(1.5rem, 5vw, 5rem); }
+.hero__maya { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--raio); }
+.servico__foto { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: calc(var(--raio) / 2); margin-bottom: 1rem; }
+.galeria img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
+@media (max-width: 680px) {
+  .hero__layout { grid-template-columns: 1fr; }
+  .hero__maya { max-width: 420px; }
+}
