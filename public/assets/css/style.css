@@ -245,6 +245,7 @@ img { height: auto; }
   .historia__etapas { display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
     margin-inline: -4vw; padding: 0 4vw .8rem; scroll-padding-inline: 4vw; scrollbar-width: none; }
   .historia__etapas::-webkit-scrollbar { display: none; }
+  .historia__etapas:focus-visible { outline: 2px solid var(--caramelo); outline-offset: 4px; border-radius: var(--raio); }
   .historia__etapas li { flex: 0 0 46%; scroll-snap-align: start; }
   .historia__etapas figcaption { font-size: .9rem; }
 
