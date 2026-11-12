@@ -191,3 +191,76 @@ h3 { font-size: 1.6rem; }
 .historia__etapas figure { margin: 0; }
 .historia__etapas img { display: block; width: 100%; height: auto; border-radius: var(--raio); }
 .historia__etapas figcaption { margin-top: .6rem; font-weight: 600; }
+
+/* ============================================
+   AJUSTES DE IMAGEM (todas as telas)
+   Cada imagem tem proporção fixa + object-fit,
+   então nunca estica nem achata (inclusive no Safari/iPhone).
+   ============================================ */
+img { height: auto; }
+.galeria { grid-auto-rows: auto; }
+.galeria figure { aspect-ratio: 4 / 3; }
+.galeria img { position: absolute; inset: 0; height: 100%; object-position: center 25%; }
+.servico__foto { object-position: center 30%; }
+.sobre__foto img { aspect-ratio: 4 / 5; }
+.historia__etapas img { aspect-ratio: 3 / 5; object-fit: cover; }
+
+.deslize { display: none; }
+
+/* ============================================
+   VERSÃO MOBILE
+   ============================================ */
+@media (max-width: 680px) {
+  h1 { font-size: 2.35rem; }
+  h2 { font-size: 2rem; }
+  .secao { padding: 3.5rem 0; }
+
+  /* Hero: texto compacto + foto em arco, sem ocupar a tela toda */
+  .hero { padding: 2.5rem 0 3rem; }
+  .hero__layout { gap: 2rem; }
+  .hero__texto { font-size: 1rem; }
+  .hero__acoes { display: grid; grid-template-columns: 1fr; gap: .7rem; margin-top: 1.5rem; }
+  .hero__acoes .btn { width: 100%; }
+  .hero__campanha { width: min(100%, 340px); margin-inline: auto; }
+  .hero__maya { max-width: none; aspect-ratio: 4 / 5; object-fit: cover; object-position: center 12%;
+    border-radius: 999px 999px var(--raio) var(--raio); border: 3px solid rgba(217,180,143,.45); }
+  .hero__campanha figcaption { text-align: center; }
+
+  /* Serviços: carrossel deslizante em vez de 8 cartões empilhados */
+  .grid-servicos { display: flex; gap: .9rem; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin-inline: -4vw; padding: .3rem 4vw 1rem; scroll-padding-inline: 4vw;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .grid-servicos::-webkit-scrollbar { display: none; }
+  .servico { flex: 0 0 72%; scroll-snap-align: start; padding: 1rem; }
+  .servico:hover { transform: none; }
+  .servico__foto { aspect-ratio: 4 / 5; }
+  .servico h3 { font-size: 1.3rem; }
+  .servico__meta { margin-bottom: .6rem; }
+
+  /* Sobre */
+  .sobre { gap: 2rem; }
+  .sobre__foto { max-width: 360px; width: 100%; margin-inline: auto; }
+
+  /* História: também deslizante */
+  .historia__etapas { display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+    margin-inline: -4vw; padding: 0 4vw .8rem; scroll-padding-inline: 4vw; scrollbar-width: none; }
+  .historia__etapas::-webkit-scrollbar { display: none; }
+  .historia__etapas li { flex: 0 0 46%; scroll-snap-align: start; }
+  .historia__etapas figcaption { font-size: .9rem; }
+
+  /* Galeria */
+  .galeria { grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+  .galeria figure { aspect-ratio: 3 / 4; }
+  .galeria figcaption { font-size: 1.1rem; padding: .7rem; }
+
+  /* Dica de deslizar */
+  .deslize { display: block; font-size: .8rem; color: var(--texto-suave); margin: .4rem 0 0; }
+
+  /* Agendamento e contato */
+  .agendar { gap: 2rem; }
+  .form, .sucesso { padding: 1.2rem; }
+  .contatos { grid-template-columns: 1fr; gap: .7rem; }
+  .contato { padding: .9rem 1rem; }
+  .rodape__inner { flex-direction: column; text-align: center; padding-bottom: 4rem; }
+  .whats-flutuante { width: 52px; height: 52px; right: 14px; bottom: 14px; }
+}
