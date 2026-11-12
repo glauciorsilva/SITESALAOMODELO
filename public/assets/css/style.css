@@ -173,10 +173,21 @@ h3 { font-size: 1.6rem; }
 
 
 .hero__layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: center; gap: clamp(1.5rem, 5vw, 5rem); }
-.hero__maya { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--raio); }
+.hero__maya { display: block; width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: contain; border-radius: var(--raio); }
 .servico__foto { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: calc(var(--raio) / 2); margin-bottom: 1rem; }
 .galeria img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; }
 @media (max-width: 680px) {
   .hero__layout { grid-template-columns: 1fr; }
   .hero__maya { max-width: 420px; }
 }
+
+
+.hero__campanha { margin: 0; }
+.hero__campanha figcaption { margin-top: .65rem; font-size: .85rem; color: #e9d8c6; }
+.sobre__foto { position: relative; margin: 0; }
+.sobre__foto img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: var(--raio); }
+.sobre__foto figcaption { position: absolute; left: 1rem; bottom: 1rem; padding: .45rem .9rem; color: var(--chocolate); background: var(--marfim); border-radius: var(--raio); }
+.historia__etapas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 1rem; padding: 0; margin: 2rem 0 0; list-style: none; }
+.historia__etapas figure { margin: 0; }
+.historia__etapas img { display: block; width: 100%; height: auto; border-radius: var(--raio); }
+.historia__etapas figcaption { margin-top: .6rem; font-weight: 600; }
